@@ -344,6 +344,25 @@ function find_authy_id() {
     done
 }
 
+function ssh_via_publickey() {
+    SSH_LOGFILE=/var/log/messages
+    if [[ $SSH_CLIENT ]]
+    then
+        local info=($SSH_CLIENT)
+        local ip=${info[0]}
+        local port=${info[1]}
+        local user=`whoami`
+
+        # line matched looks like:
+        # Aug 30 16:25:33 slackware sshd[1949]: Accepted publickey for USER from A.B.C.D port PORT ssh2
+        tail $SSH_LOGFILE | grep "publickey .* $user .* $ip .* $port"
+        if [[ $? -eq 0 ]]
+        then
+            return 0
+        fi
+    fi
+}
+
 function test_authy_ssh() {
     run "test"
 }
@@ -428,6 +447,12 @@ function run() {
             debug "cannot find authy id in $CONFIG_FILE"
             run_shell
         fi
+    fi
+
+    if [[ $(ssh_via_publickey) ]]
+    then
+        debug "user logged in via SSH public key, let user pass throuth."
+        run_shell
     fi
 
     while :
